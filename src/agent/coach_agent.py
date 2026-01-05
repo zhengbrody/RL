@@ -14,6 +14,7 @@ import os
 from .state import DailyState, DailyStateBuilder
 from .safety import SafetyGuardrails, SafetyCheckResult
 from .tools import AgentTools
+from .llm_client import LLMClient
 
 
 class CoachAgent:
@@ -26,16 +27,24 @@ class CoachAgent:
     - LLM Agent: Explains, collects feedback, triggers actions
     """
     
-    def __init__(self, llm_client=None, kafka_producer=None, plan_service=None):
+    def __init__(self, llm_client=None, kafka_producer=None, plan_service=None, provider="openai"):
         """
         Initialize Coach Agent.
         
         Args:
-            llm_client: LLM client (OpenAI, Anthropic, etc.)
+            llm_client: LLM client (OpenAI, Anthropic, etc.) - if None, creates default
             kafka_producer: Kafka producer for event logging
             plan_service: Service for plan management
+            provider: LLM provider ("openai" or "anthropic")
         """
-        self.llm_client = llm_client
+        if llm_client is None:
+            try:
+                self.llm_client = LLMClient(provider=provider)
+            except Exception as e:
+                raise RuntimeError(f"Failed to initialize LLM client: {e}")
+        else:
+            self.llm_client = llm_client
+        
         self.state_builder = DailyStateBuilder()
         self.safety = SafetyGuardrails()
         self.tools = AgentTools(kafka_producer, plan_service)
